@@ -14,6 +14,8 @@ import os
 import tempfile
 import contextlib
 
+import six
+
 from subscription_manager import managercli, managerlib
 from subscription_manager.entcertlib import CONTENT_ACCESS_CERT_TYPE
 from subscription_manager.injection import provide, \
@@ -36,7 +38,8 @@ from mock import patch, Mock, call
 # for some exceptions
 from rhsm import connection
 from rhsm.https import ssl
-from M2Crypto import SSL
+if six.PY2:
+    from M2Crypto import SSL
 
 
 class InstalledProductStatusTests(SubManFixture):
@@ -972,10 +975,10 @@ class TestAttachCommand(TestCliProxyCommand):
             tempfile.mkstemp()
         ]
 
-        os.write(cls.tempfiles[0][0], "pool1 pool2   pool3 \npool4\npool5\r\npool6\t\tpool7\n  pool8\n\n\n")
+        os.write(cls.tempfiles[0][0], "pool1 pool2   pool3 \npool4\npool5\r\npool6\t\tpool7\n  pool8\n\n\n".encode('utf-8'))
         os.close(cls.tempfiles[0][0])
 
-        os.write(cls.tempfiles[1][0], "pool1 pool2   pool3 \npool4\npool5\r\npool6\t\tpool7\n  pool8\n\n\n")
+        os.write(cls.tempfiles[1][0], "pool1 pool2   pool3 \npool4\npool5\r\npool6\t\tpool7\n  pool8\n\n\n".encode('utf-8'))
         os.close(cls.tempfiles[1][0])
 
         # The third temp file intentionally left empty for testing empty sets of data.
@@ -1560,13 +1563,14 @@ class HandleExceptionTests(unittest.TestCase):
             self.assertEqual(e.code, os.EX_SOFTWARE)
 
     def test_he_ssl_wrong_host(self):
-        e = SSL.Checker.WrongHost("expectedHost.example.com",
-                                   "actualHost.example.com",
-                                   "subjectAltName")
-        try:
-            managercli.handle_exception("huh", e)
-        except SystemExit as e:
-            self.assertEqual(e.code, os.EX_SOFTWARE)
+        if six.PY2:
+            e = SSL.Checker.WrongHost("expectedHost.example.com",
+                                       "actualHost.example.com",
+                                       "subjectAltName")
+            try:
+                managercli.handle_exception("huh", e)
+            except SystemExit as e:
+                self.assertEqual(e.code, os.EX_SOFTWARE)
 
 
 class TestFormatName(unittest.TestCase):

@@ -38,7 +38,11 @@ from threading import RLock
 def open_mock(content=None, **kwargs):
     content_out = six.StringIO()
     m = mock_open(read_data=content)
-    with patch('__builtin__.open', m, create=True, **kwargs) as mo:
+    if six.PY2:
+        function_name = '__builtin__.open'
+    else:
+        function_name = 'builtins.open'
+    with patch(function_name, m, create=True, **kwargs) as mo:
         stream = six.StringIO(content)
         rv = mo.return_value
         rv.write = lambda x: content_out.write(x)
@@ -248,7 +252,7 @@ class SubManFixture(unittest.TestCase):
         Write out a tempfile and append it to the list of those to be
         cleaned up in tearDown.
         """
-        fid = tempfile.NamedTemporaryFile(mode='w+b', suffix='.tmp')
+        fid = tempfile.NamedTemporaryFile(mode='w+', suffix='.tmp')
         fid.write(contents)
         fid.seek(0)
         self.files_to_cleanup.append(fid)
