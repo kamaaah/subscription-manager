@@ -356,7 +356,7 @@ class SubManFixture(unittest.TestCase):
 
     def assert_items_equals(self, a, b):
         """Assert that two lists contain the same items regardless of order."""
-        if sorted(a) != sorted(b):
+        if sorted(a, key=lambda item: str(item)) != sorted(b, key=lambda item: str(item)):
             self.fail("%s != %s" % (a, b))
         return True
 

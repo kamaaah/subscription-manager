@@ -155,9 +155,9 @@ class InstalledProductStatusTests(SubManFixture):
 
         # product3 isn't installed
         self.assertEqual(2, len(product_status))
-        self.assertEqual("product2", product_status[0][0])
+        self.assertEqual("product1", product_status[0][0])
         self.assertEqual("subscribed", product_status[0][4])
-        self.assertEqual("product1", product_status[1][0])
+        self.assertEqual("product2", product_status[1][0])
         self.assertEqual("subscribed", product_status[1][4])
 
 
@@ -1467,7 +1467,11 @@ class TestSystemExit(unittest.TestCase):
                 managercli.system_exit(1, msgs)
             except SystemExit:
                 pass
-        self.assertEqual("%s\n" % msgs[0].encode("utf8"), cap.err)
+        if six.PY2:
+            captured = cap.err.decode('utf-8')
+        else:
+            captured = cap.err
+        self.assertEqual(u"%s\n" % msgs[0], captured)
 
     def test_msg_and_exception_str(self):
         class StrException(Exception):
@@ -1687,6 +1691,7 @@ class TestColumnize(unittest.TestCase):
 
     @patch('subscription_manager.printing_utils.get_terminal_width')
     def test_columnize_with_small_term(self, term_width_mock):
+        term_width_mock.return_value = None
         result = columnize(["Hello Hello Hello Hello:", "Foo Foo Foo Foo:"],
                 echo_columnize_callback, "This is a testing string", "This_is_another_testing_string")
         expected = 'Hello\nHello\nHello\nHello\n:     This\n      is a\n      ' \
