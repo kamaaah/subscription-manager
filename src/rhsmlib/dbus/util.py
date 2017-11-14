@@ -37,10 +37,13 @@ def dbus_handle_exceptions(func, *args, **kwargs):
     except dbus.DBusException as e:
         log.exception(e)
         raise
-    except Exception as e:
-        log.exception(e)
+    except Exception as err:
+        log.exception(err)
         trace = sys.exc_info()[2]
-        six.reraise(exceptions.RHSM1DBusException, "%s: %s" % (type(e).__name__, str(e)), trace)
+        # Raise exception string as JSON string. Thus it can be parsed and printed properly.
+        six.reraise(exceptions.RHSM1DBusException,
+                    '{"exception": "%s", "message": "%s"}' % (type(err).__name__, str(err)),
+                    trace)
 
 
 def dbus_service_method(*args, **kwargs):

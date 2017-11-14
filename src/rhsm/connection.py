@@ -386,14 +386,12 @@ def _get_locale():
     try:
         l = locale.getlocale()
     except locale.Error:
-        pass
-
-    try:
-        l = locale.getdefaultlocale()
-    except locale.Error:
-        pass
-    except ValueError:
-        pass
+        try:
+            l = locale.getdefaultlocale()
+        except locale.Error:
+            pass
+        except ValueError:
+            pass
 
     if l and l != (None, None):
         return l[0]
@@ -533,7 +531,7 @@ class BaseRestLib(object):
             raise
         except socket.gaierror as err:
             if self.proxy_hostname and self.proxy_port:
-                raise ProxyException("Unable to connect to: %s:%s %s "
+                raise ProxyException("Unable to connect to: %s:%s %s"
                                      % (self.proxy_hostname, self.proxy_port, err))
             raise
         except socket.error as err:

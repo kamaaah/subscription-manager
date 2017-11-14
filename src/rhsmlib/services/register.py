@@ -33,7 +33,7 @@ class RegisterService(object):
         self.cp = cp
 
     def register(self, org, activation_keys=None, environment=None, force=None, name=None, consumerid=None,
-            **kwargs):
+                 **kwargs):
         # We accept a kwargs argument so that the DBus object can pass the options dictionary it
         # receives transparently to the service via dictionary unpacking.  This strategy allows the
         # DBus object to be more independent of the service implementation.
@@ -85,14 +85,17 @@ class RegisterService(object):
 
     def validate_options(self, options):
         if self.identity.is_valid() and options['force'] is not True:
-            raise exceptions.ValidationError(_("This system is already registered. Add force to options to "
-                "override."))
+            raise exceptions.ValidationError(
+                _("This system is already registered. Add force to options to override.")
+            )
         elif options.get('name') == '':
             raise exceptions.ValidationError(_("Error: system name can not be empty."))
         elif options['consumerid'] and options['force'] is True:
-            raise exceptions.ValidationError(_("Error: Can not force registration while attempting to "
-                "recover registration with consumerid. Please use --force without --consumerid to re-register"
-                " or use the clean command and try again without --force."))
+            raise exceptions.ValidationError(
+                _("Error: Can not force registration while attempting to "
+                  "recover registration with consumerid. Please use --force without --consumerid to re-register"
+                  " or use the clean command and try again without --force.")
+            )
 
         # If 'activation_keys' already exists in the dictionary, leave it.  Otherwise, set to None.
         if options['activation_keys']:
@@ -100,12 +103,16 @@ class RegisterService(object):
             if '' == options['activation_keys']:
                 raise exceptions.ValidationError(_("Error: Must specify an activation key"))
             elif getattr(self.cp, 'username', None) or getattr(self.cp, 'password', None):
-                raise exceptions.ValidationError(_("Error: Activation keys do not require user credentials."))
+                raise exceptions.ValidationError(
+                    _("Error: Activation keys do not require user credentials.")
+                )
             elif options['consumerid']:
-                raise exceptions.ValidationError(_("Error: Activation keys can not be used with previously"
-                    " registered IDs."))
+                raise exceptions.ValidationError(
+                    _("Error: Activation keys can not be used with previously registered IDs.")
+                )
             elif options['environment']:
-                raise exceptions.ValidationError(_("Error: Activation keys do not allow environments to be"
-                    " specified."))
+                raise exceptions.ValidationError(
+                    _("Error: Activation keys do not allow environments to be specified.")
+                )
         elif not getattr(self.cp, 'username', None) or not getattr(self.cp, 'password', None):
             raise exceptions.ValidationError(_("Error: Missing username or password."))

@@ -66,6 +66,22 @@ function parseProducts(text) {
     });
 }
 
+// Error message produced by D-Bus API should be string containing
+// regular JSON with following format:
+// {"exception": "NameOfException", "message": "Some error message"}
+// Only message should be reported to user.
+function parseErrorMessage(error) {
+    let err;
+    try {
+        err = JSON.parse(error).message;
+    } catch (parse_err) {
+        console.log('Error parsing D-Bus error message: ', parse_err.message);
+        console.log('Returning original error message: ', error);
+        err = error;
+    }
+    return err;
+}
+
 let gettingDetails = false;
 let getDetailsRequested = false;
 function getSubscriptionDetails() {
@@ -75,8 +91,9 @@ function getSubscriptionDetails() {
     }
     getDetailsRequested = false;
     gettingDetails = true;
+    const userLang = navigator.language || navigator.userLanguage;
     productsService.wait(() => {
-        productsService.ListInstalledProducts('', {})
+        productsService.ListInstalledProducts('', {}, userLang) // FIXME: use proxy settings
             .then(result => {
                 client.subscriptionStatus.products = parseProducts(result);
             })
@@ -96,7 +113,7 @@ client.registerSystem = subscriptionDetails => {
     const dfd = cockpit.defer();
     const connection_options = {};
 
-    if (subscriptionDetails.url != 'default') {
+    if (subscriptionDetails.url !== 'default') {
         /*  parse url into host, port, handler; sorry about the ugly regex
             (?:https?://)? strips off the protocol if it exists
             ([$/:]+) matches the hostname
@@ -158,37 +175,67 @@ client.registerSystem = subscriptionDetails => {
     console.debug('connection_options:', connection_options);
 
     registerServer.wait(() => {
-        registerServer.Start()
+        const userLang = navigator.language || navigator.userLanguage;
+        registerServer.Start(userLang)
             .then(socket => {
                 console.debug('Opening private bus interface at ' + socket);
-                const private_interface = cockpit.dbus(null, {bus: 'none', address: socket, superuser: 'require'});
-                const registerService = private_interface.proxy('com.redhat.RHSM1.Register', '/com/redhat/RHSM1/Register');
+                const private_interface = cockpit.dbus(
+                    null,
+                    {
+                        bus: 'none',
+                        address: socket,
+                        superuser: 'require'
+                    }
+                    );
+                const registerService = private_interface.proxy(
+                    'com.redhat.RHSM1.Register',
+                    '/com/redhat/RHSM1/Register'
+                );
                 if (subscriptionDetails.activationKeys) {
-                    return registerService.call('RegisterWithActivationKeys', [subscriptionDetails.org, subscriptionDetails.activationKeys.split(','), {}, connection_options]);
+                    return registerService.call(
+                        'RegisterWithActivationKeys',
+                        [
+                            subscriptionDetails.org,
+                            subscriptionDetails.activationKeys.split(','),
+                            {},
+                            connection_options,
+                            userLang
+                        ]
+                    );
                 }
                 else {
-                    return registerService.call('Register', [subscriptionDetails.org, subscriptionDetails.user, subscriptionDetails.password, {}, connection_options]);
+                    return registerService.call(
+                        'Register',
+                        [
+                            subscriptionDetails.org,
+                            subscriptionDetails.user,
+                            subscriptionDetails.password,
+                            {},
+                            connection_options,
+                            userLang
+                        ]
+                    );
                 }
             })
             .catch(error => {
                 console.error('error registering', error);
-                dfd.reject(error);
+                dfd.reject(parseErrorMessage(error));
             })
             .then(() => {
                 console.debug('stopping registration server');
-                return registerServer.Stop();
+                return registerServer.Stop(userLang);
             })
             .catch(error => {
                 console.error('error stopping registration bus', error);
-                dfd.reject(error);
+                dfd.reject(parseErrorMessage(error));
             })
             .then(() => {
                 console.debug('auto-attaching');
-                return attachService.AutoAttach('', {});
+                return attachService.AutoAttach('', {}, userLang); // FIXME: use proxy settings
             })
             .catch(error => {
                 console.error('error during autoattach', error);
-                dfd.reject(error);
+                dfd.reject(parseErrorMessage(error));
             })
             .then(() => {
                 console.debug('requesting update');
@@ -197,15 +244,15 @@ client.registerSystem = subscriptionDetails => {
             });
     });
 
-    var promise = dfd.promise();
-    return promise;
+    return dfd.promise();
 };
 
 client.unregisterSystem = () => {
     client.subscriptionStatus.status = "Unregistering";
     needRender();
     unregisterService.wait(() => {
-        unregisterService.Unregister({})
+        const userLang = navigator.language || navigator.userLanguage;
+        unregisterService.Unregister({}, userLang) // FIXME: user proxy settings
             .always(() => {
                 requestUpdate();
             });
@@ -258,7 +305,8 @@ client.getSubscriptionStatus = () => {
     gettingStatus = true;
 
     entitlementService.wait(() => {
-        entitlementService.GetStatus('')
+        const userLang = navigator.language || navigator.userLanguage;
+        entitlementService.GetStatus('', userLang)
             .then(result => {
                 const status = JSON.parse(result);
                 client.subscriptionStatus.status = status.status;
